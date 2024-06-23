@@ -1,0 +1,196 @@
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+const periodicTable = {
+  H: { color: '#FFFFFF', size: 25, electronegativity: 2.20, type: 'Nonmetal', emoji: '💧' },
+  He: { color: '#D9FFFF', size: 28, electronegativity: 0, type: 'Noble Gas', emoji: '🎈' },
+  Li: { color: '#CC80FF', size: 34, electronegativity: 0.98, type: 'Alkali Metal', emoji: '🔋' },
+  Be: { color: '#C2FF00', size: 30, electronegativity: 1.57, type: 'Alkaline Earth Metal', emoji: '💚' },
+  B: { color: '#FFB5B5', size: 28, electronegativity: 2.04, type: 'Metalloid', emoji: '🔶' },
+  C: { color: '#909090', size: 30, electronegativity: 2.55, type: 'Nonmetal', emoji: '🖤' },
+  N: { color: '#3050F8', size: 30, electronegativity: 3.04, type: 'Nonmetal', emoji: '🌪️' },
+  O: { color: '#FF0D0D', size: 35, electronegativity: 3.44, type: 'Nonmetal', emoji: '😮' },
+  F: { color: '#90E050', size: 33, electronegativity: 3.98, type: 'Halogen', emoji: '🦷' },
+  Ne: { color: '#B3E3F5', size: 30, electronegativity: 0, type: 'Noble Gas', emoji: '✨' },
+  Na: { color: '#AB5CF2', size: 37, electronegativity: 0.93, type: 'Alkali Metal', emoji: '🧂' },
+  Mg: { color: '#8AFF00', size: 35, electronegativity: 1.31, type: 'Alkaline Earth Metal', emoji: '🌱' },
+  Al: { color: '#BFA6A6', size: 33, electronegativity: 1.61, type: 'Post-transition Metal', emoji: '🥫' },
+  Si: { color: '#F0C8A0', size: 32, electronegativity: 1.90, type: 'Metalloid', emoji: '🏖️' },
+  P: { color: '#FF8000', size: 31, electronegativity: 2.19, type: 'Nonmetal', emoji: '🔥' },
+  S: { color: '#FFFF30', size: 32, electronegativity: 2.58, type: 'Nonmetal', emoji: '🌋' },
+  Cl: { color: '#1FF01F', size: 35, electronegativity: 3.16, type: 'Halogen', emoji: '🦠' },
+};
+
+const ChemistryVisualizer = () => {
+  const [input, setInput] = useState('');
+  const [structures, setStructures] = useState([]);
+  const [description, setDescription] = useState('');
+
+  const parseChemicalInput = (input) => {
+    const components = input.split(/[+,\s]+/);
+    return components.map(component => {
+      const regex = /([A-Z][a-z]?)(\d*)/g;
+      const atoms = [];
+      let match;
+      while ((match = regex.exec(component)) !== null) {
+        const [, element, count] = match;
+        const quantity = count === '' ? 1 : parseInt(count, 10);
+        for (let i = 0; i < quantity; i++) {
+          atoms.push(element);
+        }
+      }
+      return { formula: component, atoms };
+    });
+  };
+
+  const generateStructure = () => {
+    const parsedComponents = parseChemicalInput(input);
+    const newStructures = parsedComponents.map(component => {
+      const atomObjects = component.atoms.map((atom, index) => ({
+        ...periodicTable[atom],
+        symbol: atom,
+        x: Math.cos(index * 2 * Math.PI / component.atoms.length) * 50 + 100,
+        y: Math.sin(index * 2 * Math.PI / component.atoms.length) * 50 + 100,
+      }));
+      return { ...component, atomObjects };
+    });
+    setStructures(newStructures);
+    determineChemicalType(newStructures);
+  };
+
+  const determineChemicalType = (structures) => {
+    if (structures.length === 0) {
+      setDescription('Please enter a valid chemical formula. 🧪');
+      return;
+    }
+    if (structures.length === 1) {
+      const structure = structures[0];
+      if (structure.atoms.length === 1) {
+        setDescription(`This is an element: ${structure.formula} (${periodicTable[structure.atoms[0]].type}) ${periodicTable[structure.atoms[0]].emoji}`);
+      } else {
+        const uniqueAtoms = new Set(structure.atoms);
+        if (uniqueAtoms.size === 1) {
+          setDescription(`This is a diatomic element: ${structure.formula} (${periodicTable[structure.atoms[0]].type}) ${periodicTable[structure.atoms[0]].emoji}${periodicTable[structure.atoms[0]].emoji}`);
+        } else {
+          const compoundType = determineCompoundType(structure);
+          setDescription(`This is a compound: ${structure.formula} (${compoundType})`);
+        }
+      }
+    } else {
+      const mixtureType = determineMixtureType(structures);
+      setDescription(`This is a ${mixtureType} mixture containing: ${structures.map(s => s.formula).join(', ')} ${mixtureType === 'Homogeneous' ? '🥤' : '🥣'}`);
+    }
+  };
+
+  const determineCompoundType = (structure) => {
+    const uniqueAtoms = new Set(structure.atoms);
+    const atomTypes = Array.from(uniqueAtoms).map(atom => periodicTable[atom].type);
+    
+    if (atomTypes.includes('Nonmetal') && (atomTypes.includes('Metal') || atomTypes.includes('Alkali Metal') || atomTypes.includes('Alkaline Earth Metal'))) {
+      return 'Ionic Compound ⚡';
+    } else if (atomTypes.every(type => type === 'Nonmetal' || type === 'Halogen')) {
+      return 'Covalent Compound 🤝';
+    } else if (atomTypes.includes('Metalloid')) {
+      return 'Metallic Compound 🔧';
+    } else {
+      return 'Complex Compound 🌟';
+    }
+  };
+
+  const determineMixtureType = (structures) => {
+    const allAtoms = structures.flatMap(s => s.atoms);
+    const uniqueAtoms = new Set(allAtoms);
+    const atomTypes = Array.from(uniqueAtoms).map(atom => periodicTable[atom].type);
+
+    if (atomTypes.every(type => type === 'Nonmetal' || type === 'Noble Gas')) {
+      return 'Homogeneous';
+    } else {
+      return 'Heterogeneous';
+    }
+  };
+
+  const renderAtom = (atom, index) => {
+    const style = {
+      position: 'absolute',
+      left: atom.x - atom.size / 2,
+      top: atom.y - atom.size / 2,
+      width: atom.size,
+      height: atom.size,
+      borderRadius: '50%',
+      backgroundColor: atom.color,
+      border: '1px solid black',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      color: atom.color === '#FFFFFF' ? 'black' : 'white',
+      fontSize: '12px',
+      fontWeight: 'bold',
+    };
+
+    return (
+      <div key={index} style={style}>
+        {atom.symbol}
+      </div>
+    );
+  };
+
+  const renderBond = (from, to, index) => {
+    const angle = Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI;
+    const length = Math.sqrt(Math.pow(to.x - from.x, 2) + Math.pow(to.y - from.y, 2));
+
+    const style = {
+      position: 'absolute',
+      left: from.x,
+      top: from.y,
+      width: length,
+      height: 2,
+      backgroundColor: '#000000',
+      transform: `rotate(${angle}deg)`,
+      transformOrigin: '0 0',
+    };
+
+    return <div key={`bond-${index}`} style={style} />;
+  };
+
+  return (
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle>Chemistry Structure Visualizer 🧪🔬</CardTitle>
+        <CardDescription>Enter chemical formulas or mixtures to see their structures and classifications</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex space-x-4 items-center">
+          <Input
+            placeholder="Enter formula or mixture (e.g., H2O, NaCl + H2O)"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <Button onClick={generateStructure}>Visualize 🔍</Button>
+        </div>
+        <div className="w-full h-80 border-2 border-gray-300 rounded-lg relative overflow-hidden">
+          {structures.map((structure, structureIndex) => (
+            <div key={structureIndex} style={{ position: 'absolute', left: structureIndex * 200, top: 0 }}>
+              {structure.atomObjects.map((atom, atomIndex) => (
+                <React.Fragment key={`atom-${atomIndex}`}>
+                  {atomIndex > 0 && renderBond(structure.atomObjects[0], atom, atomIndex)}
+                  {renderAtom(atom, atomIndex)}
+                </React.Fragment>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="text-center font-semibold">{description}</div>
+      </CardContent>
+      <CardFooter>
+        <p className="text-sm text-gray-500">
+          Enter chemical formulas or mixtures (separated by + or ,) and click "Visualize 🔍". 
+          The tool will display the 2D structure and provide detailed information about the chemical classification. 🎓
+        </p>
+      </CardFooter>
+    </Card>
+  );
+};
+
+export default ChemistryVisualizer;
